@@ -1,0 +1,27 @@
+{
+  "name": "agrocontrol-frontend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@pinia/nuxt": "^0.5.1",
+    "leaflet": "^1.9.4",
+    "nuxt": "^3.12.2",
+    "pinia": "^2.1.7",
+    "qrcode": "^1.5.4",
+    "vue": "^3.4.27",
+    "vue-router": "^4.3.2"
+  },
+  "devDependencies": {
+    "@nuxtjs/tailwindcss": "^6.12.0",
+    "@types/leaflet": "^1.9.21",
+    "@types/qrcode": "^1.5.5",
+    "typescript": "^5.4.5"
+  }
+}
