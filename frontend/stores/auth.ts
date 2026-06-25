@@ -41,6 +41,7 @@ export const useAuthStore = defineStore('auth', () => {
     const b = (u.last_name?.[0] ?? u.email?.[1] ?? '').toUpperCase();
     return a + b || '··';
   });
+  const avatarUrl = computed(() => user.value?.avatar_url ?? null);
 
   function persist() {
     if (import.meta.client) {
@@ -132,11 +133,68 @@ export const useAuthStore = defineStore('auth', () => {
     persist();
   }
 
+  async function register(payload: {
+    email: string;
+    password: string;
+    first_name: string;
+    last_name: string;
+    cooperative_name: string;
+    phone?: string;
+  }) {
+    const res = await $fetch<{
+      access: string;
+      refresh: string;
+      user: User;
+      cooperative_slug: string | null;
+    }>('/auth/register/', { baseURL, method: 'POST', body: payload });
+    accessToken.value = res.access;
+    refreshToken.value = res.refresh;
+    user.value = res.user;
+    await loadCooperative();
+    persist();
+  }
+
   async function loadProfile() {
     user.value = await $fetch<User>('/auth/me/', {
       baseURL,
       headers: { Authorization: `Bearer ${accessToken.value}` },
     });
+  }
+
+  async function updateProfile(payload: Partial<User>) {
+    const updated = await $fetch<User>('/auth/me/', {
+      baseURL,
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${accessToken.value}` },
+      body: payload,
+    });
+    user.value = updated;
+    return updated;
+  }
+
+  async function changePassword(currentPassword: string, newPassword: string) {
+    return await $fetch<{ detail: string }>('/auth/password/', {
+      baseURL,
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken.value}` },
+      body: {
+        current_password: currentPassword,
+        new_password: newPassword,
+      },
+    });
+  }
+
+  async function uploadAvatar(file: File) {
+    const form = new FormData();
+    form.append('avatar', file);
+    const updated = await $fetch<User>('/auth/me/', {
+      baseURL,
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${accessToken.value}` },
+      body: form,
+    });
+    user.value = updated;
+    return updated;
   }
 
   async function loadCooperative() {
@@ -209,6 +267,7 @@ export const useAuthStore = defineStore('auth', () => {
     settings,
     branding,
     initials,
+    avatarUrl,
     login,
     refresh,
     logout,
@@ -217,6 +276,10 @@ export const useAuthStore = defineStore('auth', () => {
     loadProfile,
     loadCooperative,
     updateSettings,
+    register,
+    updateProfile,
+    changePassword,
+    uploadAvatar,
     enrollMfa,
     confirmMfa,
     mfaDevices,

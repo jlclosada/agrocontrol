@@ -31,7 +31,8 @@ class ParcelSerializer(serializers.ModelSerializer):
         model = Parcel
         fields = [
             "id", "farm", "farm_name", "name", "sigpac_ref", "area_ha",
-            "soil_type", "latitude", "longitude", "polygon", "is_active",
+            "soil_type", "province", "municipality", "address",
+            "latitude", "longitude", "polygon", "is_active",
             "created_at",
         ]
         read_only_fields = ["id", "created_at"]

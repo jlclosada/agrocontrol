@@ -3,6 +3,7 @@ from rest_framework import generics, permissions, status
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 from apps.accounts import mfa
@@ -12,6 +13,7 @@ from apps.tenants.utils import resolve_membership
 
 from .serializers import (
     AuditTokenObtainPairSerializer,
+    ChangePasswordSerializer,
     MfaDeviceSerializer,
     RegisterSerializer,
     UserSerializer,
@@ -70,16 +72,58 @@ class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
     permission_classes = [permissions.AllowAny]
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        coop = getattr(serializer, "_cooperative", None)
+        record_audit(
+            AuditEvent.USER_REGISTERED, request=request, user=user,
+            email=user.email, cooperative=coop,
+            detail="Alta de usuario y cooperativa",
+        )
+        refresh = RefreshToken.for_user(user)
+        return Response(
+            {
+                "access": str(refresh.access_token),
+                "refresh": str(refresh),
+                "user": UserSerializer(user).data,
+                "cooperative_slug": coop.slug if coop else None,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
 
 class MeView(APIView):
     def get(self, request):
-        return Response(UserSerializer(request.user).data)
+        return Response(
+            UserSerializer(request.user, context={"request": request}).data
+        )
 
     def patch(self, request):
-        serializer = UserSerializer(request.user, data=request.data, partial=True)
+        serializer = UserSerializer(
+            request.user, data=request.data, partial=True,
+            context={"request": request},
+        )
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
+
+
+class ChangePasswordView(APIView):
+    """Let an authenticated user change their own password."""
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(
+            data=request.data, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        record_audit(
+            AuditEvent.PASSWORD_CHANGED, request=request, user=request.user,
+            email=request.user.email,
+        )
+        return Response({"detail": "Contraseña actualizada."})
 
 
 class MfaEnrollView(APIView):

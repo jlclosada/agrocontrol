@@ -168,6 +168,16 @@ function back() {
         >
           {{ loading ? 'Comprobando…' : mfaStep ? 'Verificar' : 'Entrar' }}
         </button>
+
+        <p v-if="!mfaStep" class="text-center text-sm text-slate-500">
+          ¿No tienes cuenta?
+          <NuxtLink
+            to="/register"
+            class="font-medium text-brand-700 hover:text-brand-800 transition"
+          >
+            Crea tu cooperativa
+          </NuxtLink>
+        </p>
       </form>
     </div>
   </div>

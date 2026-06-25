@@ -68,6 +68,7 @@ class CooperativeSettings(TimeStampedModel):
     stock_alerts_enabled = models.BooleanField(default=True)
     expiry_alerts_enabled = models.BooleanField(default=True)
     safety_alerts_enabled = models.BooleanField(default=True)
+    weather_alerts_enabled = models.BooleanField(default=True)
     expiry_alert_days = models.PositiveIntegerField(
         default=30,
         help_text="Default days-before-expiry threshold for expiry alerts.",

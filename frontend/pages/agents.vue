@@ -43,7 +43,7 @@ async function send() {
 </script>
 
 <template>
-  <div class="p-6 lg:p-8 h-[100dvh] flex flex-col max-w-7xl mx-auto">
+  <div class="p-6 lg:p-8 h-[100dvh] flex flex-col w-full">
     <PageHeader
       title="Agentes IA"
       subtitle="Consulta a tus agentes especializados"

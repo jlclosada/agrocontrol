@@ -13,7 +13,7 @@ from apps.farms.serializers import (
     ParcelSerializer,
     SectorSerializer,
 )
-from apps.farms.services import cadastre
+from apps.farms.services import cadastre, weather
 from apps.tenants.models import Role
 
 
@@ -100,9 +100,41 @@ class ParcelViewSet(TenantScopedViewSet):
             "latitude": str(result["latitude"]) if result["latitude"] is not None else None,
             "longitude": str(result["longitude"]) if result["longitude"] is not None else None,
             "source": result["source"],
+            "province": result.get("province"),
+            "municipality": result.get("municipality"),
+            "address": result.get("address"),
+            "paraje": result.get("paraje"),
+            "classification": result.get("classification"),
+            "uses": result.get("uses"),
         }
         cache.set(cache_key, payload, 60 * 60 * 24)  # 24h
         return Response(payload)
+
+    @action(detail=True, methods=["get"], url_path="weather")
+    def weather(self, request, pk=None):
+        """Agronomic weather (current + 7-day forecast with ET0) for a parcel.
+
+        Uses the parcel's stored coordinates and Open-Meteo (free, public).
+        Cached 1h per parcel.
+        """
+        parcel = self.get_object()
+        if parcel.latitude is None or parcel.longitude is None:
+            return Response(
+                {"detail": "La parcela no tiene coordenadas. Localízala primero."},
+                status=400,
+            )
+        cache_key = f"weather:{parcel.id}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return Response(cached)
+        try:
+            data = weather.get_forecast(
+                float(parcel.latitude), float(parcel.longitude)
+            )
+        except weather.WeatherError as exc:
+            return Response({"detail": str(exc)}, status=502)
+        cache.set(cache_key, data, 60 * 60)  # 1h
+        return Response(data)
 
 
 class SectorViewSet(TenantScopedViewSet):

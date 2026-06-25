@@ -1,4 +1,6 @@
 from django.contrib import admin
+from django.conf import settings
+from django.conf.urls.static import static
 from django.urls import include, path
 from drf_spectacular.views import (
     SpectacularAPIView,
@@ -17,6 +19,7 @@ api_v1 = [
     path("", include("apps.tenants.urls")),
     path("", include("apps.farms.urls")),
     path("", include("apps.fieldbook.urls")),
+    path("", include("apps.tasks.urls")),
     path("", include("apps.inventory.urls")),
     path("", include("apps.memory.urls")),
     path("", include("apps.agents.urls")),
@@ -37,3 +40,6 @@ urlpatterns = [
         name="swagger-ui",
     ),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

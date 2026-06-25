@@ -50,6 +50,9 @@ class Parcel(TenantScopedModel):
     sigpac_ref = models.CharField("SIGPAC reference", max_length=120, blank=True)
     area_ha = models.DecimalField("area (ha)", max_digits=10, decimal_places=4)
     soil_type = models.CharField(max_length=120, blank=True)
+    province = models.CharField(max_length=120, blank=True)
+    municipality = models.CharField(max_length=160, blank=True)
+    address = models.CharField("location/address", max_length=255, blank=True)
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     polygon = models.JSONField(

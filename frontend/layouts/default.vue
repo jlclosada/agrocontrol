@@ -49,6 +49,11 @@ const groups = computed<NavGroup[]>(() =>
           icon: 'M12 6.5C9 4 4 4 4 4v14s5 0 8 2.5M12 6.5C15 4 20 4 20 4v14s-5 0-8 2.5M12 6.5v14',
         },
         {
+          to: '/tasks',
+          label: 'Tareas',
+          icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01',
+        },
+        {
           to: '/inventory',
           label: 'Inventario',
           icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
@@ -89,6 +94,11 @@ const groups = computed<NavGroup[]>(() =>
       title: 'Administración',
       items: [
         {
+          to: '/team',
+          label: 'Equipo',
+          icon: 'M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4zm6 0a3 3 0 10-2.5-1.34M7 11a3 3 0 11.5-1.34',
+        },
+        {
           to: '/audit',
           label: 'Auditoría',
           icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
@@ -96,7 +106,7 @@ const groups = computed<NavGroup[]>(() =>
         },
         {
           to: '/settings',
-          label: 'Seguridad',
+          label: 'Ajustes',
           icon: 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z',
         },
       ],
@@ -201,7 +211,14 @@ function isActive(to: string) {
 
       <div class="p-3 border-t border-white/10" data-tour="user">
         <div class="flex items-center gap-3 px-2 py-2">
+          <img
+            v-if="auth.avatarUrl"
+            :src="auth.avatarUrl"
+            alt="Avatar"
+            class="w-9 h-9 rounded-full object-cover shrink-0 ring-1 ring-white/20"
+          />
           <div
+            v-else
             class="w-9 h-9 rounded-full bg-brand-500 grid place-items-center text-sm font-semibold shrink-0"
           >
             {{ auth.initials }}

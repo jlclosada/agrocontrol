@@ -37,7 +37,7 @@ function short(hash: string) {
 </script>
 
 <template>
-  <div class="p-6 lg:p-8 space-y-6 max-w-5xl mx-auto">
+  <div class="p-6 lg:p-8 space-y-6 w-full">
     <PageHeader
       title="Trazabilidad"
       subtitle="Registro inmutable encadenado por hash (SHA-256)"

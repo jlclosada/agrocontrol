@@ -140,7 +140,7 @@ const catTone: Record<string, 'sky' | 'violet' | 'amber' | 'slate'> = {
 </script>
 
 <template>
-  <div class="p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
+  <div class="p-6 lg:p-8 space-y-6 w-full">
     <PageHeader
       title="Costes y rentabilidad"
       subtitle="Imputación automática de costes y análisis de margen por cultivo"

@@ -20,6 +20,7 @@ class CooperativeSettingsInline(admin.StackedInline):
                     "stock_alerts_enabled",
                     "expiry_alerts_enabled",
                     "safety_alerts_enabled",
+                    "weather_alerts_enabled",
                     "expiry_alert_days",
                 )
             },

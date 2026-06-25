@@ -10,6 +10,13 @@ class AuditEvent(models.TextChoices):
     LOGIN_MFA_REQUIRED = "LOGIN_MFA_REQUIRED", "MFA requerido"
     MFA_ENROLLED = "MFA_ENROLLED", "MFA registrado"
     LOGOUT = "LOGOUT", "Cierre de sesión"
+    USER_REGISTERED = "USER_REGISTERED", "Alta de usuario"
+    PASSWORD_CHANGED = "PASSWORD_CHANGED", "Cambio de contraseña"
+    MEMBER_ADDED = "MEMBER_ADDED", "Miembro añadido al equipo"
+    MEMBER_ROLE_CHANGED = "MEMBER_ROLE_CHANGED", "Cambio de rol de miembro"
+    MEMBER_DEACTIVATED = "MEMBER_DEACTIVATED", "Miembro desactivado"
+    MEMBER_REACTIVATED = "MEMBER_REACTIVATED", "Miembro reactivado"
+    MEMBER_ACCOUNT_CREATED = "MEMBER_ACCOUNT_CREATED", "Cuenta de acceso creada"
 
 
 class AuditLog(models.Model):

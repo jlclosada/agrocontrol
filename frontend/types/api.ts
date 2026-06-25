@@ -5,6 +5,7 @@ export interface User {
   last_name: string;
   phone: string;
   locale: string;
+  avatar_url?: string | null;
 }
 
 export interface CooperativeSettings {
@@ -13,6 +14,7 @@ export interface CooperativeSettings {
   stock_alerts_enabled: boolean;
   expiry_alerts_enabled: boolean;
   safety_alerts_enabled: boolean;
+  weather_alerts_enabled: boolean;
   expiry_alert_days: number;
   display_name: string;
   tagline: string;
@@ -63,6 +65,9 @@ export interface Parcel {
   sigpac_ref: string;
   area_ha: string;
   soil_type: string;
+  province: string;
+  municipality: string;
+  address: string;
   latitude: string | null;
   longitude: string | null;
   polygon: unknown;
@@ -99,6 +104,97 @@ export interface Crop {
   created_at: string;
 }
 
+export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'BLOCKED' | 'DONE';
+export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH';
+
+export interface TaskAssignee {
+  id: string;
+  name: string;
+  email: string;
+  initials: string;
+}
+
+export interface Member {
+  id: string;
+  user: string;
+  user_email: string;
+  user_name: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
+  locale: string;
+  last_login: string | null;
+  date_joined: string;
+  has_account: boolean;
+  initials: string;
+  role: string;
+  role_display: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface Task {
+  id: string;
+  title: string;
+  description: string;
+  status: TaskStatus;
+  status_display: string;
+  priority: TaskPriority;
+  priority_display: string;
+  category: string;
+  category_display: string;
+  due_date: string | null;
+  parcel: string | null;
+  parcel_name: string | null;
+  crop: string | null;
+  crop_label: string | null;
+  assignees: string[];
+  assignees_detail: TaskAssignee[];
+  created_by: string | null;
+  completed_at: string | null;
+  is_overdue: boolean;
+  activity_count: number;
+  created_at: string;
+}
+
+export interface TaskActivity {
+  id: string;
+  action: string;
+  action_display: string;
+  field: string;
+  from_value: string;
+  to_value: string;
+  note: string;
+  actor: string | null;
+  actor_name: string | null;
+  mentions_detail?: TaskAssignee[];
+  created_at: string;
+}
+
+export interface TaskMetrics {
+  total: number;
+  todo: number;
+  in_progress: number;
+  blocked: number;
+  done: number;
+  overdue: number;
+  due_soon: number;
+  completion_rate: number;
+  avg_cycle_days: number | null;
+  completed_7d: number;
+  completed_30d: number;
+  by_priority: { high: number; medium: number; low: number };
+}
+
+export interface TaskSummary {
+  todo: number;
+  in_progress: number;
+  blocked: number;
+  done: number;
+  overdue: number;
+  total: number;
+}
+
 export interface HarvestRecord {
   id: string;
   crop: string;
@@ -109,6 +205,38 @@ export interface HarvestRecord {
   price_per_kg: string | null;
   notes: string;
   created_at: string;
+}
+
+export interface WeatherCondition {
+  code: number | null;
+  label: string;
+  emoji: string;
+}
+
+export interface WeatherDay {
+  date: string;
+  t_max: number | null;
+  t_min: number | null;
+  precip_mm: number | null;
+  et0_mm: number | null;
+  weather: WeatherCondition;
+}
+
+export interface ParcelWeather {
+  latitude: number | null;
+  longitude: number | null;
+  elevation: number | null;
+  timezone: string | null;
+  current: {
+    time: string | null;
+    temperature: number | null;
+    humidity: number | null;
+    precipitation: number | null;
+    wind_speed: number | null;
+    weather: WeatherCondition;
+  };
+  daily: WeatherDay[];
+  source: string;
 }
 
 export interface FieldOperation {

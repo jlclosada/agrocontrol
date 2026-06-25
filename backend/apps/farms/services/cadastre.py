@@ -22,6 +22,10 @@ CATASTRO_RCCOOR = (
     "https://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/"
     "OVCCoordenadas.asmx/Consulta_RCCOOR"
 )
+CATASTRO_DNPRC = (
+    "https://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/"
+    "OVCCallejero.asmx/Consulta_DNPRC"
+)
 REQUEST_TIMEOUT = 20  # seconds
 
 _NS = {
@@ -67,6 +71,74 @@ def _parse_pos_list(text: str) -> list[list[float]]:
         lat, lon = nums[i], nums[i + 1]
         ring.append([round(lon, 7), round(lat, 7)])
     return ring
+
+
+def _localname(tag: str) -> str:
+    """Return an XML tag's local name, stripping any ``{namespace}`` prefix."""
+    return tag.rsplit("}", 1)[-1] if "}" in tag else tag
+
+
+def _collect_texts(root: ET.Element) -> dict[str, list[str]]:
+    """Walk an XML tree and group non-empty element texts by local tag name."""
+    out: dict[str, list[str]] = {}
+    for el in root.iter():
+        text = (el.text or "").strip()
+        if text:
+            out.setdefault(_localname(el.tag), []).append(text)
+    return out
+
+
+def lookup_location(refcat: str) -> dict:
+    """Resolve administrative location info for a cadastral reference.
+
+    Calls Catastro's *Consulta de Datos No Protegidos por RC* (DNPRC) and
+    extracts province, municipality, the literal address and (for rural plots)
+    the paraje and crop/use descriptions. Best-effort: returns an empty dict on
+    any failure so it never breaks the primary geometry lookup.
+    """
+    refcat = (refcat or "").strip().upper()[:14]
+    if len(refcat) < 14:
+        return {}
+
+    params = {"Provincia": "", "Municipio": "", "RC": refcat}
+    url = f"{CATASTRO_DNPRC}?{urllib.parse.urlencode(params)}"
+    try:
+        raw = _http_get(url)
+        root = ET.fromstring(raw)
+    except (CadastreError, ET.ParseError):
+        return {}
+
+    texts = _collect_texts(root)
+
+    def first(tag: str) -> str | None:
+        vals = texts.get(tag)
+        return vals[0] if vals else None
+
+    province = first("np")
+    municipality = first("nm")
+    address = first("ldt")
+    paraje = first("npa")
+    classification = first("cn")  # RU (rústico) / UR (urbano)
+
+    # Distinct crop/use descriptions (rural sub-parcels) or main use (urban).
+    uses: list[str] = []
+    for tag in ("dcc", "luso"):
+        for v in texts.get(tag, []):
+            if v not in uses:
+                uses.append(v)
+
+    class_label = {"RU": "Rústico", "UR": "Urbano"}.get(
+        (classification or "").upper()
+    )
+
+    return {
+        "province": province,
+        "municipality": municipality,
+        "address": address,
+        "paraje": paraje,
+        "classification": class_label,
+        "uses": uses or None,
+    }
 
 
 def lookup_by_reference(refcat: str) -> dict:
@@ -127,7 +199,7 @@ def lookup_by_reference(refcat: str) -> dict:
     ref_el = parcel.find("cp:nationalCadastralReference", _NS)
     reference = ref_el.text if ref_el is not None and ref_el.text else refcat
 
-    return {
+    result = {
         "reference": reference,
         "area_ha": area_ha,
         "polygon": polygon,
@@ -135,6 +207,8 @@ def lookup_by_reference(refcat: str) -> dict:
         "longitude": lon,
         "source": "catastro",
     }
+    result.update(lookup_location(reference))
+    return result
 
 
 def lookup_by_coordinate(lat: float, lon: float) -> dict:

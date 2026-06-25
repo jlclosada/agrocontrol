@@ -79,10 +79,61 @@ def _eval_safety(rule):
         )
 
 
+def _eval_weather(rule):
+    """Water-deficit alerts from the agronomic forecast.
+
+    For each active, geolocated parcel with a growing crop, sum the 7-day
+    precipitation and FAO-56 reference ET. A strongly negative water balance
+    (rain minus ET0) signals an irrigation need.
+    """
+    from apps.farms.models import Parcel
+    from apps.farms.services.weather import WeatherError, get_forecast
+
+    threshold = float(rule.condition.get("deficit_mm", 25))
+    days = int(rule.condition.get("days", 7))
+
+    parcels = Parcel.objects.filter(
+        cooperative=rule.cooperative,
+        is_active=True,
+        latitude__isnull=False,
+        longitude__isnull=False,
+        crops__status="GROWING",
+    ).distinct()
+
+    for parcel in parcels:
+        try:
+            forecast = get_forecast(
+                float(parcel.latitude), float(parcel.longitude), days
+            )
+        except WeatherError:
+            continue
+        daily = forecast.get("daily") or []
+        rain = sum((d.get("precip_mm") or 0) for d in daily)
+        et0 = sum((d.get("et0_mm") or 0) for d in daily)
+        balance = rain - et0
+        if balance >= -threshold:
+            continue
+        deficit = round(abs(balance), 1)
+        yield (
+            f"weather:{parcel.id}",
+            f"Déficit hídrico: {parcel.name}",
+            f"Balance hídrico previsto de {round(balance, 1)} mm en {days} días "
+            f"(lluvia {round(rain, 1)} mm − ET₀ {round(et0, 1)} mm). "
+            f"Considera regar aprox. {deficit} mm.",
+            {
+                "parcel": str(parcel.id),
+                "balance_mm": round(balance, 1),
+                "rain_mm": round(rain, 1),
+                "et0_mm": round(et0, 1),
+            },
+        )
+
+
 EVALUATORS = {
     AlertTrigger.STOCK: _eval_stock,
     AlertTrigger.EXPIRY: _eval_expiry,
     AlertTrigger.SAFETY: _eval_safety,
+    AlertTrigger.WEATHER: _eval_weather,
 }
 
 
@@ -91,6 +142,7 @@ _TRIGGER_FLAGS = {
     AlertTrigger.STOCK: "stock_alerts_enabled",
     AlertTrigger.EXPIRY: "expiry_alerts_enabled",
     AlertTrigger.SAFETY: "safety_alerts_enabled",
+    AlertTrigger.WEATHER: "weather_alerts_enabled",
 }
 
 
@@ -133,6 +185,8 @@ def ensure_default_rules(cooperative):
         ("Caducidad de lotes (30 días)", AlertTrigger.EXPIRY, {"days": 30},
          AlertSeverity.MEDIUM),
         ("Plazo de seguridad", AlertTrigger.SAFETY, {}, AlertSeverity.HIGH),
+        ("Déficit hídrico (7 días)", AlertTrigger.WEATHER,
+         {"deficit_mm": 25, "days": 7}, AlertSeverity.MEDIUM),
     ]
     created = []
     for name, trigger, condition, severity in defaults:

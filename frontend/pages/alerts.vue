@@ -73,7 +73,7 @@ async function resolve(a: Alert) {
 </script>
 
 <template>
-  <div class="p-6 lg:p-8 space-y-6 max-w-6xl mx-auto">
+  <div class="p-6 lg:p-8 space-y-6 w-full">
     <PageHeader
       title="Alertas"
       subtitle="Eventos de stock, caducidad y plazos de seguridad"

@@ -18,7 +18,7 @@ const eventTone: Record<string, 'green' | 'red' | 'amber' | 'sky' | 'slate'> = {
 </script>
 
 <template>
-  <div class="p-6 lg:p-8 space-y-6 max-w-6xl mx-auto">
+  <div class="p-6 lg:p-8 space-y-6 w-full">
     <PageHeader
       title="Auditoría"
       subtitle="Registro de eventos de seguridad y accesos"

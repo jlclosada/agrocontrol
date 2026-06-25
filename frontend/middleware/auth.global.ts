@@ -5,10 +5,11 @@ export default defineNuxtRouteMiddleware((to) => {
   // so the auth guard only runs on the client.
   if (import.meta.server) return;
   const auth = useAuthStore();
-  if (!auth.isAuthenticated && to.path !== '/login') {
+  const publicPaths = ['/login', '/register'];
+  if (!auth.isAuthenticated && !publicPaths.includes(to.path)) {
     return navigateTo('/login');
   }
-  if (auth.isAuthenticated && to.path === '/login') {
+  if (auth.isAuthenticated && publicPaths.includes(to.path)) {
     return navigateTo('/');
   }
 });

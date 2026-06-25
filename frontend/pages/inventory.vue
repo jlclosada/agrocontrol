@@ -205,10 +205,122 @@ const moveTone: Record<string, 'green' | 'red' | 'sky' | 'slate'> = {
   OUT: 'red',
   ADJUST: 'sky',
 };
+
+// --- Search, filters & KPIs ---
+const search = ref('');
+const productCategory = ref<string>('');
+const productStock = ref<'all' | 'low' | 'ok'>('all');
+const batchStatus = ref<'all' | 'ok' | 'expiring' | 'expired'>('all');
+const moveType = ref<string>('');
+
+watch(tab, () => {
+  search.value = '';
+});
+
+const categoryFilterOptions = computed(() => [
+  { value: '', label: 'Todas las categorías' },
+  ...categories,
+]);
+const productStockOptions = [
+  { value: 'all', label: 'Todo el stock' },
+  { value: 'low', label: 'Stock bajo' },
+  { value: 'ok', label: 'Stock OK' },
+];
+const batchStatusOptions = [
+  { value: 'all', label: 'Todos los estados' },
+  { value: 'ok', label: 'Vigentes' },
+  { value: 'expiring', label: 'Caduca <30 d' },
+  { value: 'expired', label: 'Caducados' },
+];
+const moveTypeOptions = computed(() => [
+  { value: '', label: 'Todos los tipos' },
+  ...movementTypes,
+]);
+
+const filteredProducts = computed(() => {
+  const q = search.value.trim().toLowerCase();
+  return (products.value?.results ?? []).filter((p) => {
+    if (productCategory.value && p.category !== productCategory.value)
+      return false;
+    if (productStock.value === 'low' && !p.needs_reorder) return false;
+    if (productStock.value === 'ok' && p.needs_reorder) return false;
+    if (!q) return true;
+    return [p.name, p.active_ingredient, p.registration_number]
+      .filter(Boolean)
+      .some((v) => String(v).toLowerCase().includes(q));
+  });
+});
+
+function batchDays(b: StockBatch) {
+  if (!b.expiry_date) return Infinity;
+  return (new Date(b.expiry_date).getTime() - Date.now()) / 86_400_000;
+}
+const filteredBatches = computed(() => {
+  const q = search.value.trim().toLowerCase();
+  return (batches.value?.results ?? []).filter((b) => {
+    if (batchStatus.value === 'expired' && !b.is_expired) return false;
+    if (batchStatus.value === 'ok' && (b.is_expired || batchDays(b) <= 30))
+      return false;
+    if (
+      batchStatus.value === 'expiring' &&
+      (b.is_expired || batchDays(b) > 30 || !b.expiry_date)
+    )
+      return false;
+    if (!q) return true;
+    return [b.product_name, b.lot]
+      .filter(Boolean)
+      .some((v) => String(v).toLowerCase().includes(q));
+  });
+});
+
+const filteredMovements = computed(() => {
+  const q = search.value.trim().toLowerCase();
+  return (movements.value?.results ?? []).filter((m) => {
+    if (moveType.value && m.movement_type !== moveType.value) return false;
+    if (!q) return true;
+    return [m.product_name, m.reason]
+      .filter(Boolean)
+      .some((v) => String(v).toLowerCase().includes(q));
+  });
+});
+
+const kpis = computed(() => {
+  const prods = products.value?.results ?? [];
+  const batchRows = batches.value?.results ?? [];
+  return {
+    products: prods.length,
+    lowStock: prods.filter((p) => p.needs_reorder).length,
+    batches: batchRows.length,
+    expiring: batchRows.filter(
+      (b) => !b.is_expired && b.expiry_date && batchDays(b) <= 30,
+    ).length,
+    stockValue: prods.reduce(
+      (s, p) => s + Number(p.current_stock) * Number(p.unit_cost),
+      0,
+    ),
+  };
+});
+
+const hasFilters = computed(() => {
+  if (tab.value === 'products')
+    return (
+      !!search.value || !!productCategory.value || productStock.value !== 'all'
+    );
+  if (tab.value === 'batches')
+    return !!search.value || batchStatus.value !== 'all';
+  return !!search.value || !!moveType.value;
+});
+function resetFilters() {
+  search.value = '';
+  productCategory.value = '';
+  productStock.value = 'all';
+  batchStatus.value = 'all';
+  moveType.value = '';
+}
 </script>
 
 <template>
-  <div class="p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
+  <div class="p-6 lg:p-8 space-y-6 w-full">
     <PageHeader
       title="Inventario"
       subtitle="Productos fitosanitarios, lotes con caducidad y movimientos de stock"
@@ -242,6 +354,84 @@ const moveTone: Record<string, 'green' | 'red' | 'sky' | 'slate'> = {
       </template>
     </PageHeader>
 
+    <!-- KPI summary -->
+    <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
+      <StatCard label="Productos" :value="kpis.products" tone="brand" />
+      <StatCard label="Stock bajo" :value="kpis.lowStock" tone="amber" />
+      <StatCard label="Lotes" :value="kpis.batches" tone="sky" />
+      <StatCard label="Caducan <30d" :value="kpis.expiring" tone="red" />
+      <StatCard
+        label="Valor stock"
+        :value="kpis.stockValue"
+        :decimals="2"
+        prefix="€ "
+        tone="violet"
+      />
+    </div>
+
+    <!-- Search & filters toolbar -->
+    <div class="flex items-center flex-wrap gap-2.5">
+      <UiSearchInput
+        v-model="search"
+        :placeholder="
+          tab === 'products'
+            ? 'Buscar producto, materia activa…'
+            : tab === 'batches'
+              ? 'Buscar por producto o lote…'
+              : 'Buscar por producto o motivo…'
+        "
+        class="w-full sm:w-72"
+      />
+      <template v-if="tab === 'products'">
+        <UiFilterSelect
+          v-model="productCategory"
+          :options="categoryFilterOptions"
+          icon="M7 7h.01M7 3h5a1.99 1.99 0 011.414.586l7 7a2 2 0 010 2.828l-5 5a2 2 0 01-2.828 0l-7-7A1.99 1.99 0 014 9V5a2 2 0 012-2z"
+          class="w-48"
+        />
+        <UiFilterSelect
+          v-model="productStock"
+          :options="productStockOptions"
+          icon="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"
+          class="w-44"
+        />
+      </template>
+      <UiFilterSelect
+        v-else-if="tab === 'batches'"
+        v-model="batchStatus"
+        :options="batchStatusOptions"
+        icon="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+        class="w-48"
+      />
+      <UiFilterSelect
+        v-else
+        v-model="moveType"
+        :options="moveTypeOptions"
+        icon="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+        class="w-48"
+      />
+      <button
+        v-if="hasFilters"
+        class="inline-flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-500 transition"
+        @click="resetFilters"
+      >
+        <svg
+          class="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M6 18L18 6M6 6l12 12"
+          />
+        </svg>
+        Limpiar
+      </button>
+    </div>
+
     <Transition name="page" mode="out-in">
       <!-- Products -->
       <UiCard v-if="tab === 'products'" key="prod" :padded="false">
@@ -263,7 +453,7 @@ const moveTone: Record<string, 'green' | 'red' | 'sky' | 'slate'> = {
             class="divide-y divide-slate-100"
           >
             <tr
-              v-for="p in products?.results"
+              v-for="p in filteredProducts"
               :key="p.id"
               class="hover:bg-slate-50/70 transition"
             >
@@ -294,9 +484,13 @@ const moveTone: Record<string, 'green' | 'red' | 'sky' | 'slate'> = {
           </TransitionGroup>
         </table>
         <EmptyState
-          v-if="!pendingProducts && !products?.results?.length"
-          title="Sin productos"
-          message="Aún no hay productos en el inventario."
+          v-if="!pendingProducts && !filteredProducts.length"
+          :title="hasFilters ? 'Sin coincidencias' : 'Sin productos'"
+          :message="
+            hasFilters
+              ? 'Ningún producto coincide con los filtros.'
+              : 'Aún no hay productos en el inventario.'
+          "
         />
       </UiCard>
 
@@ -320,7 +514,7 @@ const moveTone: Record<string, 'green' | 'red' | 'sky' | 'slate'> = {
             class="divide-y divide-slate-100"
           >
             <tr
-              v-for="b in batches?.results"
+              v-for="b in filteredBatches"
               :key="b.id"
               class="hover:bg-slate-50/70 transition"
             >
@@ -346,9 +540,13 @@ const moveTone: Record<string, 'green' | 'red' | 'sky' | 'slate'> = {
           </TransitionGroup>
         </table>
         <EmptyState
-          v-if="!pendingBatches && !batches?.results?.length"
-          title="Sin lotes"
-          message="No hay lotes de stock registrados."
+          v-if="!pendingBatches && !filteredBatches.length"
+          :title="hasFilters ? 'Sin coincidencias' : 'Sin lotes'"
+          :message="
+            hasFilters
+              ? 'Ningún lote coincide con los filtros.'
+              : 'No hay lotes de stock registrados.'
+          "
         />
       </UiCard>
 
@@ -371,7 +569,7 @@ const moveTone: Record<string, 'green' | 'red' | 'sky' | 'slate'> = {
             class="divide-y divide-slate-100"
           >
             <tr
-              v-for="m in movements?.results"
+              v-for="m in filteredMovements"
               :key="m.id"
               class="hover:bg-slate-50/70 transition"
             >
@@ -401,9 +599,13 @@ const moveTone: Record<string, 'green' | 'red' | 'sky' | 'slate'> = {
           </TransitionGroup>
         </table>
         <EmptyState
-          v-if="!pendingMoves && !movements?.results?.length"
-          title="Sin movimientos"
-          message="No hay movimientos de stock registrados."
+          v-if="!pendingMoves && !filteredMovements.length"
+          :title="hasFilters ? 'Sin coincidencias' : 'Sin movimientos'"
+          :message="
+            hasFilters
+              ? 'Ningún movimiento coincide con los filtros.'
+              : 'No hay movimientos de stock registrados.'
+          "
         />
       </UiCard>
     </Transition>
